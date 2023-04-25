@@ -25,10 +25,7 @@ func New() *ResponseBody {
 }
 
 func (r *ResponseBody) Build(writer io.Writer, data *TemplateData) error {
-	body, err := template.New("body").Parse(bodyTemplate)
-	if err != nil {
-		return err
-	}
+	body, _ := template.New("body").Parse(bodyTemplate)
 
 	if err := body.Execute(writer, data); err != nil {
 		return err

@@ -11,17 +11,21 @@ import (
 
 var repoRegexp = regexp.MustCompile(`^[a-zA-Z0-9-_.]{1,32}$`)
 
-type GitHub struct {
-	client  *github.Client
-	limiter *rate.Limiter
-	owner   string
+type RepositoriesService interface {
+	Get(ctx context.Context, owner, repo string) (*github.Repository, *github.Response, error)
 }
 
-func New(client *github.Client, limiter *rate.Limiter, owner string) *GitHub {
+type GitHub struct {
+	repositoriesService RepositoriesService
+	limiter             *rate.Limiter
+	owner               string
+}
+
+func New(repositoriesService RepositoriesService, limiter *rate.Limiter, owner string) *GitHub {
 	return &GitHub{
-		client:  client,
-		limiter: limiter,
-		owner:   owner,
+		repositoriesService: repositoriesService,
+		limiter:             limiter,
+		owner:               owner,
 	}
 }
 
@@ -42,7 +46,7 @@ func (g *GitHub) Fetch(ctx context.Context, repo string) (repository.Repository,
 		return nil, err
 	}
 
-	data, _, err := g.client.Repositories.Get(ctx, g.owner, repo)
+	data, _, err := g.repositoriesService.Get(ctx, g.owner, repo)
 	if err != nil {
 		return nil, err
 	}

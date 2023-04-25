@@ -92,7 +92,7 @@ func (a *appContext) handleRequest(response http.ResponseWriter, request *http.R
 
 func main() {
 	appCtx := &appContext{
-		VCSHandler:         github.New(githubClient.NewClient(nil), rate.NewLimiter(25, 100), "joeig"),
+		VCSHandler:         github.New(githubClient.NewClient(nil).Repositories, rate.NewLimiter(25, 100), "joeig"),
 		ResponseBuilder:    goget.New(),
 		Cache:              memoize.NewMemoizer(1*time.Hour, 1*time.Hour),
 		PackageHost:        "go.eigsys.de",

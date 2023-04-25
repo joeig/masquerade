@@ -28,3 +28,12 @@ Redirecting you to the <a href="project-website">project website</a>...`)
 		t.Error("wrong result")
 	}
 }
+
+func TestResponseBody_Build_error(t *testing.T) {
+	writer := &bytes.Buffer{}
+	body := New()
+
+	if err := body.Build(writer, nil); err == nil {
+		t.Error("no error")
+	}
+}
