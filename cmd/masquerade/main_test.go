@@ -65,7 +65,6 @@ func Test_handleXCacheHeader(t *testing.T) {
 	type args struct {
 		response http.ResponseWriter
 		cached   bool
-		want     string
 	}
 	tests := []struct {
 		name string
