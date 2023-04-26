@@ -45,19 +45,19 @@ type Memoizer interface {
 }
 
 type appContext struct {
-	VCSHandler         VCSHandler
-	ResponseBuilder    ResponseBuilder
-	Cache              Memoizer
-	PackageHost        string
-	ListenAndServeAddr string
-	MaxAge             time.Duration
+	VCSHandler      VCSHandler
+	ResponseBuilder ResponseBuilder
+	Cache           Memoizer
+	PackageHost     string
+	ServerAddr      string
+	MaxAge          time.Duration
 }
 
 func (a *appContext) ListenAndServe() error {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", a.handleRequest)
 
-	return http.ListenAndServe(a.ListenAndServeAddr, mux)
+	return http.ListenAndServe(a.ServerAddr, mux)
 }
 
 func (a *appContext) buildResponse(response http.ResponseWriter, request *http.Request) error {
@@ -94,21 +94,30 @@ func (a *appContext) handleRequest(response http.ResponseWriter, request *http.R
 }
 
 func main() {
-	packageHost := flag.String("package-host", "", "Package host")
-	githubOwner := flag.String("github-owner", "", "GitHub owner")
+	serverAddr := flag.String("serverAddr", ":8493", "HTTP listener address")
+	packageHost := flag.String("packageHost", "", "Package host")
+	ttl := flag.Duration("ttl", 1*time.Hour, "Cache TTL")
+	githubOwner := flag.String("githubOwner", "", "GitHub owner")
+	githubRequestRate := flag.Float64("githubRequestRate", 25, "Max. request rate to GitHub")
+	githubBucketSize := flag.Int("githubBucketSize", 100, "Max. request bucket size for GitHub")
 	flag.Parse()
 
-	if *packageHost == "" || *githubOwner == "" {
+	if *serverAddr == "" || *packageHost == "" || *githubOwner == "" {
 		flag.Usage()
+		log.Fatal("invalid flag")
 	}
 
 	appCtx := &appContext{
-		VCSHandler:         github.New(githubClient.NewClient(nil).Repositories, rate.NewLimiter(25, 100), *githubOwner),
-		ResponseBuilder:    goget.New(),
-		Cache:              memoize.NewMemoizer(1*time.Hour, 1*time.Hour),
-		PackageHost:        *packageHost,
-		ListenAndServeAddr: ":8493",
-		MaxAge:             1 * time.Hour,
+		VCSHandler: github.New(
+			githubClient.NewClient(nil).Repositories,
+			rate.NewLimiter(rate.Limit(*githubRequestRate), *githubBucketSize),
+			*githubOwner,
+		),
+		ResponseBuilder: goget.New(),
+		Cache:           memoize.NewMemoizer(*ttl, *ttl),
+		PackageHost:     *packageHost,
+		ServerAddr:      *serverAddr,
+		MaxAge:          *ttl,
 	}
 
 	log.Fatal(appCtx.ListenAndServe())

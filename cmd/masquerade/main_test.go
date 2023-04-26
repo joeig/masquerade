@@ -191,12 +191,12 @@ func Test_appContext_buildResponse(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			a := &appContext{
-				VCSHandler:         tt.fields.VCSHandler,
-				ResponseBuilder:    tt.fields.ResponseBuilder,
-				Cache:              tt.fields.Cache,
-				PackageHost:        tt.fields.PackageHost,
-				ListenAndServeAddr: tt.fields.ListenAndServeAddr,
-				MaxAge:             tt.fields.MaxAge,
+				VCSHandler:      tt.fields.VCSHandler,
+				ResponseBuilder: tt.fields.ResponseBuilder,
+				Cache:           tt.fields.Cache,
+				PackageHost:     tt.fields.PackageHost,
+				ServerAddr:      tt.fields.ListenAndServeAddr,
+				MaxAge:          tt.fields.MaxAge,
 			}
 			if err := a.buildResponse(tt.args.response, tt.args.request); (err != nil) != tt.wantErr {
 				t.Errorf("buildResponse() error = %v, wantErr %v", err, tt.wantErr)
@@ -280,12 +280,12 @@ func Test_appContext_handleRequest(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			a := &appContext{
-				VCSHandler:         tt.fields.VCSHandler,
-				ResponseBuilder:    tt.fields.ResponseBuilder,
-				Cache:              tt.fields.Cache,
-				PackageHost:        tt.fields.PackageHost,
-				ListenAndServeAddr: tt.fields.ListenAndServeAddr,
-				MaxAge:             tt.fields.MaxAge,
+				VCSHandler:      tt.fields.VCSHandler,
+				ResponseBuilder: tt.fields.ResponseBuilder,
+				Cache:           tt.fields.Cache,
+				PackageHost:     tt.fields.PackageHost,
+				ServerAddr:      tt.fields.ListenAndServeAddr,
+				MaxAge:          tt.fields.MaxAge,
 			}
 			a.handleRequest(tt.args.response, tt.args.request)
 			response := tt.args.response.(*httptest.ResponseRecorder)
