@@ -94,10 +94,11 @@ func (a *appContext) handleRequest(response http.ResponseWriter, request *http.R
 }
 
 func main() {
+	packageHost := flag.String("package-host", "", "Package host")
 	githubOwner := flag.String("github-owner", "", "GitHub owner")
 	flag.Parse()
 
-	if *githubOwner == "" {
+	if *packageHost == "" || *githubOwner == "" {
 		flag.Usage()
 	}
 
@@ -105,7 +106,7 @@ func main() {
 		VCSHandler:         github.New(githubClient.NewClient(nil).Repositories, rate.NewLimiter(25, 100), *githubOwner),
 		ResponseBuilder:    goget.New(),
 		Cache:              memoize.NewMemoizer(1*time.Hour, 1*time.Hour),
-		PackageHost:        "go.eigsys.de",
+		PackageHost:        *packageHost,
 		ListenAndServeAddr: ":8493",
 		MaxAge:             1 * time.Hour,
 	}
