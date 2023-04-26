@@ -6,16 +6,22 @@ type Repository struct {
 	repository *github.Repository
 }
 
-func (r *Repository) RepoRoot() string {
+func (r *Repository) GetRepoRoot() string {
 	if r.repository == nil {
 		return ""
 	}
 	return r.repository.GetHTMLURL()
 }
 
-func (r *Repository) ProjectWebsite() string {
+func (r *Repository) GetProjectWebsiteOrFallback(fallback string) string {
 	if r.repository == nil {
-		return ""
+		return fallback
 	}
-	return r.repository.GetHomepage()
+
+	projectWebsite := r.repository.GetHomepage()
+	if projectWebsite == "" {
+		return fallback
+	}
+
+	return projectWebsite
 }

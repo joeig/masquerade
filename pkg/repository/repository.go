@@ -1,6 +1,6 @@
 package repository
 
 type Repository interface {
-	RepoRoot() string
-	ProjectWebsite() string
+	GetRepoRoot() string
+	GetProjectWebsiteOrFallback(fallback string) string
 }

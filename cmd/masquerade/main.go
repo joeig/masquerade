@@ -73,16 +73,11 @@ func (a *appContext) buildResponse(response http.ResponseWriter, request *http.R
 
 	vcsRepository := vcsData.(repository.Repository)
 
-	projectWebsite := vcsRepository.ProjectWebsite()
-	if projectWebsite == "" {
-		projectWebsite = vcsRepository.RepoRoot()
-	}
-
 	data := &goget.TemplateData{
 		ImportPrefix:   path.Join(a.PackageHost, repo),
 		VCS:            a.VCSHandler.Type(),
-		RepoRoot:       vcsRepository.RepoRoot(),
-		ProjectWebsite: projectWebsite,
+		RepoRoot:       vcsRepository.GetRepoRoot(),
+		ProjectWebsite: vcsRepository.GetProjectWebsiteOrFallback(vcsRepository.GetRepoRoot()),
 	}
 
 	return a.ResponseBuilder.Build(response, data)
