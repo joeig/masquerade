@@ -61,6 +61,228 @@ func (m *mockMemoizer) Memoize(_ string, _ func() (any, error)) (any, error, boo
 	return m.memoizeResult, m.memoizeErr, m.memoizeCached
 }
 
+func Test_appContext_getMux(t *testing.T) {
+	response := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodGet, "/foo", nil)
+	a := &appContext{
+		VCSHandler:      &mockVCSHandler{},
+		ResponseBuilder: &mockResponseBuilder{buildBytes: []byte("<head>")},
+		Cache:           &mockMemoizer{memoizeResult: &mockRepository{}, memoizeCached: true},
+		MaxAge:          30 * time.Second,
+	}
+	wantCode := 200
+	wantHeaders := http.Header{
+		"Cache-Control": {"public, max-age=30"},
+		"X-Cache":       {"Hit"},
+		"Content-Type":  {"text/html; charset=utf-8"},
+	}
+	wantBody := []byte("<head>")
+
+	a.getMux().ServeHTTP(response, request)
+
+	if response.Code != wantCode {
+		t.Error("invalid code")
+	}
+	if !reflect.DeepEqual(response.Header(), wantHeaders) {
+		t.Error("invalid headers")
+	}
+	if !bytes.Equal(response.Body.Bytes(), wantBody) {
+		t.Error("invalid body")
+	}
+}
+
+func Test_appContext_buildResponse(t *testing.T) {
+	type fields struct {
+		VCSHandler         VCSHandler
+		ResponseBuilder    ResponseBuilder
+		Cache              Memoizer
+		PackageHost        string
+		ListenAndServeAddr string
+		MaxAge             time.Duration
+	}
+	type args struct {
+		response http.ResponseWriter
+		request  *http.Request
+	}
+	tests := []struct {
+		name        string
+		fields      fields
+		args        args
+		wantErr     bool
+		wantHeaders http.Header
+		wantBody    []byte
+	}{
+		{
+			name: "user",
+			fields: fields{
+				VCSHandler:      &mockVCSHandler{},
+				ResponseBuilder: &mockResponseBuilder{buildBytes: []byte("<head>")},
+				Cache:           &mockMemoizer{memoizeResult: &mockRepository{}, memoizeCached: true},
+			},
+			args: args{
+				response: httptest.NewRecorder(),
+				request:  httptest.NewRequest(http.MethodGet, "/foo", nil),
+			},
+			wantErr:     false,
+			wantBody:    []byte("<head>"),
+			wantHeaders: http.Header{"X-Cache": {"Hit"}, "Content-Type": {"text/html; charset=utf-8"}},
+		},
+		{
+			name: "go-get",
+			fields: fields{
+				VCSHandler:      &mockVCSHandler{},
+				ResponseBuilder: &mockResponseBuilder{buildBytes: []byte("<head>")},
+				Cache:           &mockMemoizer{memoizeResult: &mockRepository{}, memoizeCached: true},
+			},
+			args: args{
+				response: httptest.NewRecorder(),
+				request:  httptest.NewRequest(http.MethodGet, "/foo?go-get=1", nil),
+			},
+			wantErr:     false,
+			wantBody:    []byte("<head>"),
+			wantHeaders: http.Header{"X-Cache": {"Hit"}, "Content-Type": {"text/html; charset=utf-8"}},
+		},
+		{
+			name: "memoizer-error",
+			fields: fields{
+				VCSHandler: &mockVCSHandler{},
+				Cache:      &mockMemoizer{memoizeErr: errors.New("error")},
+			},
+			args: args{
+				response: httptest.NewRecorder(),
+				request:  httptest.NewRequest(http.MethodGet, "/foo", nil),
+			},
+			wantErr:     true,
+			wantHeaders: http.Header{},
+		},
+		{
+			name: "response-builder-error",
+			fields: fields{
+				VCSHandler:      &mockVCSHandler{},
+				ResponseBuilder: &mockResponseBuilder{buildErr: errors.New("error")},
+				Cache:           &mockMemoizer{memoizeResult: &mockRepository{}},
+			},
+			args: args{
+				response: httptest.NewRecorder(),
+				request:  httptest.NewRequest(http.MethodGet, "/foo", nil),
+			},
+			wantErr:     true,
+			wantHeaders: http.Header{"X-Cache": {"Miss"}, "Content-Type": {"text/plain; charset=utf-8"}}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			a := &appContext{
+				VCSHandler:      tt.fields.VCSHandler,
+				ResponseBuilder: tt.fields.ResponseBuilder,
+				Cache:           tt.fields.Cache,
+				PackageHost:     tt.fields.PackageHost,
+				ServerAddr:      tt.fields.ListenAndServeAddr,
+				MaxAge:          tt.fields.MaxAge,
+			}
+			if err := a.buildResponse(tt.args.response, tt.args.request); (err != nil) != tt.wantErr {
+				t.Errorf("buildResponse() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			response := tt.args.response.(*httptest.ResponseRecorder)
+			if response.Code != 200 {
+				t.Error("invalid code")
+			}
+			if !reflect.DeepEqual(tt.args.response.Header(), tt.wantHeaders) {
+				t.Error("invalid headers")
+			}
+			if !bytes.Equal(response.Body.Bytes(), tt.wantBody) {
+				t.Error("invalid body")
+			}
+		})
+	}
+}
+
+func Test_appContext_handleRequest(t *testing.T) {
+	type fields struct {
+		VCSHandler         VCSHandler
+		ResponseBuilder    ResponseBuilder
+		Cache              Memoizer
+		PackageHost        string
+		ListenAndServeAddr string
+		MaxAge             time.Duration
+	}
+	type args struct {
+		response http.ResponseWriter
+		request  *http.Request
+	}
+	tests := []struct {
+		name        string
+		fields      fields
+		args        args
+		wantCode    int
+		wantHeaders http.Header
+		wantBody    []byte
+	}{
+		{
+			name: "ok",
+			fields: fields{
+				VCSHandler:      &mockVCSHandler{},
+				ResponseBuilder: &mockResponseBuilder{buildBytes: []byte("<head>")},
+				Cache:           &mockMemoizer{memoizeResult: &mockRepository{}, memoizeCached: true},
+				MaxAge:          30 * time.Second,
+			},
+			args: args{
+				response: httptest.NewRecorder(),
+				request:  httptest.NewRequest(http.MethodGet, "/foo", nil),
+			},
+			wantCode: 200,
+			wantHeaders: http.Header{
+				"Cache-Control": {"public, max-age=30"},
+				"X-Cache":       {"Hit"},
+				"Content-Type":  {"text/html; charset=utf-8"},
+			},
+			wantBody: []byte("<head>"),
+		},
+		{
+			name: "build-response-error",
+			fields: fields{
+				VCSHandler:      &mockVCSHandler{},
+				ResponseBuilder: &mockResponseBuilder{},
+				Cache:           &mockMemoizer{memoizeErr: errors.New("error"), memoizeCached: true},
+				MaxAge:          30 * time.Second,
+			},
+			args: args{
+				response: httptest.NewRecorder(),
+				request:  httptest.NewRequest(http.MethodGet, "/foo", nil),
+			},
+			wantCode: 404,
+			wantHeaders: http.Header{
+				"Cache-Control":          {"public, max-age=30"},
+				"Content-Type":           {"text/plain; charset=utf-8"},
+				"X-Content-Type-Options": {"nosniff"},
+			},
+			wantBody: []byte("404 page not found\n"),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			a := &appContext{
+				VCSHandler:      tt.fields.VCSHandler,
+				ResponseBuilder: tt.fields.ResponseBuilder,
+				Cache:           tt.fields.Cache,
+				PackageHost:     tt.fields.PackageHost,
+				ServerAddr:      tt.fields.ListenAndServeAddr,
+				MaxAge:          tt.fields.MaxAge,
+			}
+			a.handleRequest(tt.args.response, tt.args.request)
+			response := tt.args.response.(*httptest.ResponseRecorder)
+			if response.Code != tt.wantCode {
+				t.Error("invalid code")
+			}
+			if !reflect.DeepEqual(tt.args.response.Header(), tt.wantHeaders) {
+				t.Error("invalid headers")
+			}
+			if !bytes.Equal(response.Body.Bytes(), tt.wantBody) {
+				t.Error("invalid body")
+			}
+		})
+	}
+}
+
 func Test_handleXCacheHeader(t *testing.T) {
 	type args struct {
 		response http.ResponseWriter
@@ -106,197 +328,5 @@ func Test_handleCacheControlHeader(t *testing.T) {
 
 	if response.Header().Get("Cache-Control") != "public, max-age=7200" {
 		t.Error("wrong header value")
-	}
-}
-
-func Test_appContext_buildResponse(t *testing.T) {
-	type fields struct {
-		VCSHandler         VCSHandler
-		ResponseBuilder    ResponseBuilder
-		Cache              Memoizer
-		PackageHost        string
-		ListenAndServeAddr string
-		MaxAge             time.Duration
-	}
-	type args struct {
-		response http.ResponseWriter
-		request  *http.Request
-	}
-	tests := []struct {
-		name        string
-		fields      fields
-		args        args
-		wantErr     bool
-		wantHeaders http.Header
-		wantBody    []byte
-	}{
-		{
-			name: "user",
-			fields: fields{
-				VCSHandler:      &mockVCSHandler{},
-				ResponseBuilder: &mockResponseBuilder{buildBytes: []byte("<head>")},
-				Cache:           &mockMemoizer{memoizeResult: &mockRepository{}, memoizeCached: true},
-			},
-			args: args{
-				response: httptest.NewRecorder(),
-				request:  httptest.NewRequest(http.MethodGet, "/foo", nil),
-			},
-			wantErr:     false,
-			wantBody:    []byte("<head>"),
-			wantHeaders: map[string][]string{"X-Cache": {"Hit"}, "Content-Type": {"text/html; charset=utf-8"}},
-		},
-		{
-			name: "go-get",
-			fields: fields{
-				VCSHandler:      &mockVCSHandler{},
-				ResponseBuilder: &mockResponseBuilder{buildBytes: []byte("<head>")},
-				Cache:           &mockMemoizer{memoizeResult: &mockRepository{}, memoizeCached: true},
-			},
-			args: args{
-				response: httptest.NewRecorder(),
-				request:  httptest.NewRequest(http.MethodGet, "/foo?go-get=1", nil),
-			},
-			wantErr:     false,
-			wantBody:    []byte("<head>"),
-			wantHeaders: map[string][]string{"X-Cache": {"Hit"}, "Content-Type": {"text/html; charset=utf-8"}},
-		},
-		{
-			name: "memoizer-error",
-			fields: fields{
-				VCSHandler: &mockVCSHandler{},
-				Cache:      &mockMemoizer{memoizeErr: errors.New("error")},
-			},
-			args: args{
-				response: httptest.NewRecorder(),
-				request:  httptest.NewRequest(http.MethodGet, "/foo", nil),
-			},
-			wantErr:     true,
-			wantHeaders: map[string][]string{},
-		},
-		{
-			name: "response-builder-error",
-			fields: fields{
-				VCSHandler:      &mockVCSHandler{},
-				ResponseBuilder: &mockResponseBuilder{buildErr: errors.New("error")},
-				Cache:           &mockMemoizer{memoizeResult: &mockRepository{}},
-			},
-			args: args{
-				response: httptest.NewRecorder(),
-				request:  httptest.NewRequest(http.MethodGet, "/foo", nil),
-			},
-			wantErr:     true,
-			wantHeaders: map[string][]string{"X-Cache": {"Miss"}, "Content-Type": {"text/plain; charset=utf-8"}}},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			a := &appContext{
-				VCSHandler:      tt.fields.VCSHandler,
-				ResponseBuilder: tt.fields.ResponseBuilder,
-				Cache:           tt.fields.Cache,
-				PackageHost:     tt.fields.PackageHost,
-				ServerAddr:      tt.fields.ListenAndServeAddr,
-				MaxAge:          tt.fields.MaxAge,
-			}
-			if err := a.buildResponse(tt.args.response, tt.args.request); (err != nil) != tt.wantErr {
-				t.Errorf("buildResponse() error = %v, wantErr %v", err, tt.wantErr)
-			}
-			response := tt.args.response.(*httptest.ResponseRecorder)
-			if response.Code != 200 {
-				t.Error("invalid code")
-			}
-			if !reflect.DeepEqual(tt.args.response.Header(), tt.wantHeaders) {
-				t.Error("invalid header")
-			}
-			if !bytes.Equal(response.Body.Bytes(), tt.wantBody) {
-				t.Error("invalid body")
-			}
-		})
-	}
-}
-
-func Test_appContext_handleRequest(t *testing.T) {
-	type fields struct {
-		VCSHandler         VCSHandler
-		ResponseBuilder    ResponseBuilder
-		Cache              Memoizer
-		PackageHost        string
-		ListenAndServeAddr string
-		MaxAge             time.Duration
-	}
-	type args struct {
-		response http.ResponseWriter
-		request  *http.Request
-	}
-	tests := []struct {
-		name        string
-		fields      fields
-		args        args
-		wantCode    int
-		wantHeaders http.Header
-		wantBody    []byte
-	}{
-		{
-			name: "ok",
-			fields: fields{
-				VCSHandler:      &mockVCSHandler{},
-				ResponseBuilder: &mockResponseBuilder{buildBytes: []byte("<head>")},
-				Cache:           &mockMemoizer{memoizeResult: &mockRepository{}, memoizeCached: true},
-				MaxAge:          30 * time.Second,
-			},
-			args: args{
-				response: httptest.NewRecorder(),
-				request:  httptest.NewRequest(http.MethodGet, "/foo", nil),
-			},
-			wantCode: 200,
-			wantHeaders: map[string][]string{
-				"Cache-Control": {"public, max-age=30"},
-				"X-Cache":       {"Hit"},
-				"Content-Type":  {"text/html; charset=utf-8"},
-			},
-			wantBody: []byte("<head>"),
-		},
-		{
-			name: "build-response-error",
-			fields: fields{
-				VCSHandler:      &mockVCSHandler{},
-				ResponseBuilder: &mockResponseBuilder{},
-				Cache:           &mockMemoizer{memoizeErr: errors.New("error"), memoizeCached: true},
-				MaxAge:          30 * time.Second,
-			},
-			args: args{
-				response: httptest.NewRecorder(),
-				request:  httptest.NewRequest(http.MethodGet, "/foo", nil),
-			},
-			wantCode: 404,
-			wantHeaders: map[string][]string{
-				"Cache-Control":          {"public, max-age=30"},
-				"Content-Type":           {"text/plain; charset=utf-8"},
-				"X-Content-Type-Options": {"nosniff"},
-			},
-			wantBody: []byte("404 page not found\n"),
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			a := &appContext{
-				VCSHandler:      tt.fields.VCSHandler,
-				ResponseBuilder: tt.fields.ResponseBuilder,
-				Cache:           tt.fields.Cache,
-				PackageHost:     tt.fields.PackageHost,
-				ServerAddr:      tt.fields.ListenAndServeAddr,
-				MaxAge:          tt.fields.MaxAge,
-			}
-			a.handleRequest(tt.args.response, tt.args.request)
-			response := tt.args.response.(*httptest.ResponseRecorder)
-			if response.Code != tt.wantCode {
-				t.Error("invalid code")
-			}
-			if !reflect.DeepEqual(tt.args.response.Header(), tt.wantHeaders) {
-				t.Error("invalid header")
-			}
-			if !bytes.Equal(response.Body.Bytes(), tt.wantBody) {
-				t.Error("invalid body")
-			}
-		})
 	}
 }

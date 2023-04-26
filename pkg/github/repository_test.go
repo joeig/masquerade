@@ -6,10 +6,33 @@ import (
 )
 
 func TestRepository_RepoRoot(t *testing.T) {
-	repo := &Repository{repository: &github.Repository{HTMLURL: github.String("https://example.com")}}
-
-	if repo.GetRepoRoot() != "https://example.com" {
-		t.Error("wrong repo root")
+	type fields struct {
+		repository *github.Repository
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		want   string
+	}{
+		{
+			name:   "everything-given",
+			fields: fields{repository: &github.Repository{HTMLURL: github.String("the-url")}},
+			want:   "the-url",
+		},
+		{
+			name: "repository-nil",
+			want: "",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := &Repository{
+				repository: tt.fields.repository,
+			}
+			if got := r.GetRepoRoot(); got != tt.want {
+				t.Errorf("GetRepoRoot() = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }
 

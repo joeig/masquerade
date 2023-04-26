@@ -1,7 +1,7 @@
 # Masquerade 🎭
 
 [![Tests](https://github.com/joeig/masquerade/workflows/Tests/badge.svg)](https://github.com/joeig/masquerade/actions)
-[![Test coverage](https://img.shields.io/badge/coverage-70%25-success)](https://github.com/joeig/masquerade/tree/master/.github/testcoverage.yml)
+[![Test coverage](https://img.shields.io/badge/coverage-76%25-success)](https://github.com/joeig/masquerade/tree/master/.github/testcoverage.yml)
 [![Go Report Card](https://goreportcard.com/badge/go.eigsys.de/masquerade)](https://goreportcard.com/report/go.eigsys.de/masquerade)
 
 Masquerade helps you to host your Go modules behind your own domain.

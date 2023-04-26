@@ -18,19 +18,6 @@ import (
 	"time"
 )
 
-func handleXCacheHeader(response http.ResponseWriter, cached bool) {
-	value := "Miss"
-	if cached {
-		value = "Hit"
-	}
-
-	response.Header().Add("X-Cache", value)
-}
-
-func handleCacheControlHeader(response http.ResponseWriter, maxAge time.Duration) {
-	response.Header().Add("Cache-Control", fmt.Sprintf("public, max-age=%.f", maxAge.Seconds()))
-}
-
 type VCSHandler interface {
 	Type() string
 	Fetch(ctx context.Context, repo string) (repository.Repository, error)
@@ -54,10 +41,14 @@ type appContext struct {
 }
 
 func (a *appContext) ListenAndServe() error {
+	return http.ListenAndServe(a.ServerAddr, a.getMux())
+}
+
+func (a *appContext) getMux() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", a.handleRequest)
 
-	return http.ListenAndServe(a.ServerAddr, mux)
+	return mux
 }
 
 func (a *appContext) buildResponse(response http.ResponseWriter, request *http.Request) error {
@@ -91,6 +82,19 @@ func (a *appContext) handleRequest(response http.ResponseWriter, request *http.R
 		log.Print(err)
 		http.NotFound(response, request)
 	}
+}
+
+func handleXCacheHeader(response http.ResponseWriter, cached bool) {
+	value := "Miss"
+	if cached {
+		value = "Hit"
+	}
+
+	response.Header().Add("X-Cache", value)
+}
+
+func handleCacheControlHeader(response http.ResponseWriter, maxAge time.Duration) {
+	response.Header().Add("Cache-Control", fmt.Sprintf("public, max-age=%.f", maxAge.Seconds()))
 }
 
 func main() {
