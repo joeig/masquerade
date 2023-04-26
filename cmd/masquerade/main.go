@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	githubClient "github.com/google/go-github/v52/github"
 	"github.com/kofalt/go-memoize"
@@ -93,8 +94,15 @@ func (a *appContext) handleRequest(response http.ResponseWriter, request *http.R
 }
 
 func main() {
+	githubOwner := flag.String("github-owner", "", "GitHub owner")
+	flag.Parse()
+
+	if *githubOwner == "" {
+		flag.Usage()
+	}
+
 	appCtx := &appContext{
-		VCSHandler:         github.New(githubClient.NewClient(nil).Repositories, rate.NewLimiter(25, 100), "joeig"),
+		VCSHandler:         github.New(githubClient.NewClient(nil).Repositories, rate.NewLimiter(25, 100), *githubOwner),
 		ResponseBuilder:    goget.New(),
 		Cache:              memoize.NewMemoizer(1*time.Hour, 1*time.Hour),
 		PackageHost:        "go.eigsys.de",
