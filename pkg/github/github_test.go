@@ -6,6 +6,7 @@ import (
 	"github.com/google/go-github/v52/github"
 	"go.eigsys.de/masquerade/pkg/repository"
 	"golang.org/x/time/rate"
+	"net/http"
 	"reflect"
 	"testing"
 )
@@ -79,6 +80,7 @@ func TestGitHub_isValidRepo(t *testing.T) {
 }
 
 func TestGitHub_Fetch(t *testing.T) {
+	genericError := errors.New("generic error")
 	type fields struct {
 		repositoriesService RepositoriesService
 		limiter             *rate.Limiter
@@ -89,11 +91,12 @@ func TestGitHub_Fetch(t *testing.T) {
 		repo string
 	}
 	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		want    repository.Repository
-		wantErr bool
+		name          string
+		fields        fields
+		args          args
+		want          repository.Repository
+		wantErr       bool
+		wantErrResult error
 	}{
 		{
 			name: "ok",
@@ -126,16 +129,35 @@ func TestGitHub_Fetch(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "get-error",
+			name: "repository-not-found",
 			fields: fields{
-				repositoriesService: &mockRepositoriesService{getError: errors.New("error")},
+				repositoriesService: &mockRepositoriesService{
+					getResponse: &github.Response{
+						Response: &http.Response{StatusCode: http.StatusNotFound},
+					},
+					getError: errors.New("error"),
+				},
+				limiter: rate.NewLimiter(rate.Inf, 0),
+			},
+			args: args{
+				ctx:  context.Background(),
+				repo: "the-repo",
+			},
+			wantErr:       true,
+			wantErrResult: repository.ErrNotFound,
+		},
+		{
+			name: "generic-error",
+			fields: fields{
+				repositoriesService: &mockRepositoriesService{getError: genericError},
 				limiter:             rate.NewLimiter(rate.Inf, 0),
 			},
 			args: args{
 				ctx:  context.Background(),
 				repo: "the-repo",
 			},
-			wantErr: true,
+			wantErr:       true,
+			wantErrResult: genericError,
 		},
 	}
 	for _, tt := range tests {
@@ -148,6 +170,10 @@ func TestGitHub_Fetch(t *testing.T) {
 			got, err := g.Fetch(tt.args.ctx, tt.args.repo)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Fetch() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if tt.wantErrResult != nil && !errors.Is(err, tt.wantErrResult) {
+				t.Errorf("Fetch() error = %v, wantErrResult %v", err, tt.wantErrResult)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {

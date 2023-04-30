@@ -229,7 +229,7 @@ func Test_appContext_handleRequest(t *testing.T) {
 				response: httptest.NewRecorder(),
 				request:  httptest.NewRequest(http.MethodGet, "/foo", nil),
 			},
-			wantCode: 200,
+			wantCode: http.StatusOK,
 			wantHeaders: http.Header{
 				"Cache-Control": {"public, max-age=30"},
 				"X-Cache":       {"Hit"},
@@ -238,7 +238,27 @@ func Test_appContext_handleRequest(t *testing.T) {
 			wantBody: []byte("<head>"),
 		},
 		{
-			name: "build-response-error",
+			name: "not-found-error",
+			fields: fields{
+				VCSHandler:      &mockVCSHandler{},
+				ResponseBuilder: &mockResponseBuilder{},
+				Cache:           &mockMemoizer{memoizeErr: repository.ErrNotFound, memoizeCached: true},
+				MaxAge:          30 * time.Second,
+			},
+			args: args{
+				response: httptest.NewRecorder(),
+				request:  httptest.NewRequest(http.MethodGet, "/foo", nil),
+			},
+			wantCode: http.StatusNotFound,
+			wantHeaders: http.Header{
+				"Cache-Control":          {"public, max-age=30"},
+				"Content-Type":           {"text/plain; charset=utf-8"},
+				"X-Content-Type-Options": {"nosniff"},
+			},
+			wantBody: []byte("module not found\n"),
+		},
+		{
+			name: "generic-error",
 			fields: fields{
 				VCSHandler:      &mockVCSHandler{},
 				ResponseBuilder: &mockResponseBuilder{},
@@ -249,13 +269,13 @@ func Test_appContext_handleRequest(t *testing.T) {
 				response: httptest.NewRecorder(),
 				request:  httptest.NewRequest(http.MethodGet, "/foo", nil),
 			},
-			wantCode: 404,
+			wantCode: http.StatusInternalServerError,
 			wantHeaders: http.Header{
 				"Cache-Control":          {"public, max-age=30"},
 				"Content-Type":           {"text/plain; charset=utf-8"},
 				"X-Content-Type-Options": {"nosniff"},
 			},
-			wantBody: []byte("404 page not found\n"),
+			wantBody: []byte("error\n"),
 		},
 	}
 	for _, tt := range tests {

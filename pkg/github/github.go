@@ -6,6 +6,7 @@ import (
 	"github.com/google/go-github/v52/github"
 	"go.eigsys.de/masquerade/pkg/repository"
 	"golang.org/x/time/rate"
+	"net/http"
 	"regexp"
 )
 
@@ -46,8 +47,12 @@ func (g *GitHub) Fetch(ctx context.Context, repo string) (repository.Repository,
 		return nil, err
 	}
 
-	data, _, err := g.repositoriesService.Get(ctx, g.owner, repo)
+	data, resp, err := g.repositoriesService.Get(ctx, g.owner, repo)
 	if err != nil {
+		if resp != nil && resp.StatusCode == http.StatusNotFound {
+			return nil, repository.ErrNotFound
+		}
+
 		return nil, err
 	}
 
