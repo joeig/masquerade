@@ -13,7 +13,13 @@ It verifies whether the desired module exists in your GitHub account and directs
 
 ## Usage
 
+### Quick start
+
     $ masquerade -packageHost "go.eigsys.de" -githubOwner "joeig"
+
+### Print the full usage
+
+    $ masquerade -help
 
 ## Notes
 
