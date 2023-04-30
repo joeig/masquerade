@@ -41,7 +41,14 @@ type appContext struct {
 }
 
 func (a *appContext) ListenAndServe() error {
-	return http.ListenAndServe(a.ServerAddr, a.getMux())
+	server := http.Server{
+		Addr:         a.ServerAddr,
+		Handler:      a.getMux(),
+		ReadTimeout:  6 * time.Second,
+		WriteTimeout: 6 * time.Second,
+	}
+
+	return server.ListenAndServe()
 }
 
 func (a *appContext) getMux() http.Handler {
