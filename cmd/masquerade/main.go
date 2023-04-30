@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	githubClient "github.com/google/go-github/v52/github"
@@ -87,7 +88,13 @@ func (a *appContext) handleRequest(response http.ResponseWriter, request *http.R
 
 	if err := a.buildResponse(response, request); err != nil {
 		log.Print(err)
-		http.NotFound(response, request)
+
+		if errors.Is(err, repository.ErrNotFound) {
+			http.Error(response, "module not found", http.StatusNotFound)
+			return
+		}
+
+		http.Error(response, "error", http.StatusInternalServerError)
 	}
 }
 
