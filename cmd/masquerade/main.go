@@ -93,7 +93,7 @@ func (a *AppContext) handleRequest(response http.ResponseWriter, request *http.R
 			return
 		}
 
-		http.Error(response, "error", http.StatusInternalServerError)
+		http.Error(response, "bad request", http.StatusBadRequest)
 	}
 }
 
