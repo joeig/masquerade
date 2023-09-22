@@ -2,4 +2,4 @@
 profile: ./out/coverage.out
 threshold:
   # Note: Update README.md in case thresholds change.
-  total: 76
+  total: 77

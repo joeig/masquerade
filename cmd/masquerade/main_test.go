@@ -64,7 +64,7 @@ func (m *mockMemoizer) Memoize(_ string, _ func() (any, error)) (any, error, boo
 func Test_appContext_getMux(t *testing.T) {
 	response := httptest.NewRecorder()
 	request := httptest.NewRequest(http.MethodGet, "/foo", nil)
-	a := &appContext{
+	appContext := &AppContext{
 		VCSHandler:      &mockVCSHandler{},
 		ResponseBuilder: &mockResponseBuilder{buildBytes: []byte("<head>")},
 		Cache:           &mockMemoizer{memoizeResult: &mockRepository{}, memoizeCached: true},
@@ -78,7 +78,7 @@ func Test_appContext_getMux(t *testing.T) {
 	}
 	wantBody := []byte("<head>")
 
-	a.getMux().ServeHTTP(response, request)
+	appContext.getMux().ServeHTTP(response, request)
 
 	if response.Code != wantCode {
 		t.Error("invalid code")
@@ -171,7 +171,7 @@ func Test_appContext_buildResponse(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			a := &appContext{
+			appContext := &AppContext{
 				VCSHandler:      tt.fields.VCSHandler,
 				ResponseBuilder: tt.fields.ResponseBuilder,
 				Cache:           tt.fields.Cache,
@@ -179,7 +179,7 @@ func Test_appContext_buildResponse(t *testing.T) {
 				ServerAddr:      tt.fields.ListenAndServeAddr,
 				MaxAge:          tt.fields.MaxAge,
 			}
-			if err := a.buildResponse(tt.args.response, tt.args.request); (err != nil) != tt.wantErr {
+			if err := appContext.buildResponse(tt.args.response, tt.args.request); (err != nil) != tt.wantErr {
 				t.Errorf("buildResponse() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			response := tt.args.response.(*httptest.ResponseRecorder)
@@ -231,9 +231,8 @@ func Test_appContext_handleRequest(t *testing.T) {
 			},
 			wantCode: http.StatusOK,
 			wantHeaders: http.Header{
-				"Cache-Control": {"public, max-age=30"},
-				"X-Cache":       {"Hit"},
-				"Content-Type":  {"text/html; charset=utf-8"},
+				"X-Cache":      {"Hit"},
+				"Content-Type": {"text/html; charset=utf-8"},
 			},
 			wantBody: []byte("<head>"),
 		},
@@ -251,7 +250,6 @@ func Test_appContext_handleRequest(t *testing.T) {
 			},
 			wantCode: http.StatusNotFound,
 			wantHeaders: http.Header{
-				"Cache-Control":          {"public, max-age=30"},
 				"Content-Type":           {"text/plain; charset=utf-8"},
 				"X-Content-Type-Options": {"nosniff"},
 			},
@@ -271,7 +269,6 @@ func Test_appContext_handleRequest(t *testing.T) {
 			},
 			wantCode: http.StatusInternalServerError,
 			wantHeaders: http.Header{
-				"Cache-Control":          {"public, max-age=30"},
 				"Content-Type":           {"text/plain; charset=utf-8"},
 				"X-Content-Type-Options": {"nosniff"},
 			},
@@ -280,7 +277,7 @@ func Test_appContext_handleRequest(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			a := &appContext{
+			appContext := &AppContext{
 				VCSHandler:      tt.fields.VCSHandler,
 				ResponseBuilder: tt.fields.ResponseBuilder,
 				Cache:           tt.fields.Cache,
@@ -288,7 +285,7 @@ func Test_appContext_handleRequest(t *testing.T) {
 				ServerAddr:      tt.fields.ListenAndServeAddr,
 				MaxAge:          tt.fields.MaxAge,
 			}
-			a.handleRequest(tt.args.response, tt.args.request)
+			appContext.handleRequest(tt.args.response, tt.args.request)
 			response := tt.args.response.(*httptest.ResponseRecorder)
 			if response.Code != tt.wantCode {
 				t.Error("invalid code")
@@ -300,6 +297,36 @@ func Test_appContext_handleRequest(t *testing.T) {
 				t.Error("invalid body")
 			}
 		})
+	}
+}
+
+func Test_appContext_handleHealth(t *testing.T) {
+	response := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodGet, "/.internal/health", nil)
+	appContext := &AppContext{}
+	wantCode := 200
+	wantBody := []byte("ok")
+
+	appContext.getMux().ServeHTTP(response, request)
+
+	if response.Code != wantCode {
+		t.Error("invalid code")
+	}
+	if !bytes.Equal(response.Body.Bytes(), wantBody) {
+		t.Error("invalid body")
+	}
+}
+
+func Test_handleCacheControlHeader(t *testing.T) {
+	appContext := &AppContext{MaxAge: 2 * time.Hour}
+	stub := func(_ http.ResponseWriter, _ *http.Request) {}
+	response := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	appContext.handleCacheControlHeader(stub)(response, request)
+
+	if response.Header().Get("Cache-Control") != "public, max-age=7200" {
+		t.Error("wrong header value")
 	}
 }
 
@@ -338,15 +365,5 @@ func Test_handleXCacheHeader(t *testing.T) {
 				t.Error("wrong header value")
 			}
 		})
-	}
-}
-
-func Test_handleCacheControlHeader(t *testing.T) {
-	response := httptest.NewRecorder()
-
-	handleCacheControlHeader(response, 2*time.Hour)
-
-	if response.Header().Get("Cache-Control") != "public, max-age=7200" {
-		t.Error("wrong header value")
 	}
 }
