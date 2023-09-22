@@ -256,7 +256,7 @@ func Test_appContext_handleRequest(t *testing.T) {
 			wantBody: []byte("module not found\n"),
 		},
 		{
-			name: "generic-error",
+			name: "bad-request",
 			fields: fields{
 				VCSHandler:      &mockVCSHandler{},
 				ResponseBuilder: &mockResponseBuilder{},
@@ -267,12 +267,12 @@ func Test_appContext_handleRequest(t *testing.T) {
 				response: httptest.NewRecorder(),
 				request:  httptest.NewRequest(http.MethodGet, "/foo", nil),
 			},
-			wantCode: http.StatusInternalServerError,
+			wantCode: http.StatusBadRequest,
 			wantHeaders: http.Header{
 				"Content-Type":           {"text/plain; charset=utf-8"},
 				"X-Content-Type-Options": {"nosniff"},
 			},
-			wantBody: []byte("error\n"),
+			wantBody: []byte("bad request\n"),
 		},
 	}
 	for _, tt := range tests {
