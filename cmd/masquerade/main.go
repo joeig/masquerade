@@ -14,8 +14,11 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
 	"path"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -39,17 +42,35 @@ type AppContext struct {
 	PackageHost     string
 	ServerAddr      string
 	MaxAge          time.Duration
+
+	server *http.Server
 }
 
 func (a *AppContext) ListenAndServe() error {
-	server := http.Server{
+	a.server = &http.Server{
 		Addr:         a.ServerAddr,
 		Handler:      a.getMux(),
 		ReadTimeout:  6 * time.Second,
 		WriteTimeout: 6 * time.Second,
 	}
 
-	return server.ListenAndServe()
+	return a.server.ListenAndServe()
+}
+
+func (a *AppContext) GracefulShutdown() {
+	quit := make(chan os.Signal, 1)
+
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+
+	<-quit
+	log.Print("shutting down")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 12*time.Second)
+	defer cancel()
+
+	if err := a.server.Shutdown(ctx); err != nil {
+		log.Fatalf("forced shutdown: %s", err)
+	}
 }
 
 func (a *AppContext) getMux() http.Handler {
@@ -144,5 +165,11 @@ func main() {
 		MaxAge:          *ttl,
 	}
 
-	log.Fatal(appContext.ListenAndServe())
+	go func() {
+		if err := appContext.ListenAndServe(); err != nil {
+			log.Fatal(err)
+		}
+	}()
+
+	appContext.GracefulShutdown()
 }
