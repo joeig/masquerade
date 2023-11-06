@@ -5,7 +5,7 @@ go 1.20
 require (
 	github.com/google/go-github/v52 v52.0.0
 	github.com/kofalt/go-memoize v0.0.0-20220914132407-0b5d6a304579
-	golang.org/x/time v0.3.0
+	golang.org/x/time v0.4.0
 )
 
 require (
