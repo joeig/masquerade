@@ -76,6 +76,8 @@ func (m *Metrics) ListenAndServe() error {
 		WriteTimeout: 3 * time.Second,
 	}
 
+	log.Printf("exporting metrics on %q", m.server.Addr)
+
 	return m.server.ListenAndServe()
 }
 
@@ -102,6 +104,8 @@ func (a *AppContext) ListenAndServe() error {
 		ReadTimeout:  6 * time.Second,
 		WriteTimeout: 6 * time.Second,
 	}
+
+	log.Printf("listening on %q", a.server.Addr)
 
 	return a.server.ListenAndServe()
 }
