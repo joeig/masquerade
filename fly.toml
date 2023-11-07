@@ -27,3 +27,8 @@ timeout = "5s"
 
 [deploy]
 strategy = "rolling"
+
+[[metrics]]
+port = 9091
+path = "/metrics"
+processes = ["app"]
