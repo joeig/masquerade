@@ -7,6 +7,8 @@ import (
 	"fmt"
 	githubClient "github.com/google/go-github/v52/github"
 	"github.com/kofalt/go-memoize"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.eigsys.de/masquerade/pkg/github"
 	"go.eigsys.de/masquerade/pkg/goget"
 	"go.eigsys.de/masquerade/pkg/repository"
@@ -35,7 +37,50 @@ type Memoizer interface {
 	Memoize(key string, fn func() (any, error)) (any, error, bool)
 }
 
+const moduleLabel = "module"
+
+type Metrics struct {
+	HTTPRequestsTotal *prometheus.CounterVec
+
+	registerer prometheus.Registerer
+	gatherer   prometheus.Gatherer
+	server     *http.Server
+}
+
+func NewMetrics(registerer prometheus.Registerer, gatherer prometheus.Gatherer) *Metrics {
+	metrics := &Metrics{
+		HTTPRequestsTotal: prometheus.NewCounterVec(
+			prometheus.CounterOpts{
+				Name: "http_requests_total",
+				Help: "Total number of HTTP requests",
+			},
+			[]string{moduleLabel},
+		),
+		registerer: registerer,
+		gatherer:   gatherer,
+	}
+
+	registerer.MustRegister(metrics.HTTPRequestsTotal)
+
+	return metrics
+}
+
+func (m *Metrics) ListenAndServe() error {
+	mux := http.NewServeMux()
+	mux.Handle("/metrics", promhttp.HandlerFor(m.gatherer, promhttp.HandlerOpts{Registry: m.registerer}))
+
+	m.server = &http.Server{
+		Addr:         ":9091",
+		Handler:      mux,
+		ReadTimeout:  3 * time.Second,
+		WriteTimeout: 3 * time.Second,
+	}
+
+	return m.server.ListenAndServe()
+}
+
 type AppContext struct {
+	Metrics         *Metrics
 	VCSHandler      VCSHandler
 	ResponseBuilder ResponseBuilder
 	Cache           Memoizer
@@ -47,6 +92,10 @@ type AppContext struct {
 }
 
 func (a *AppContext) ListenAndServe() error {
+	go func() {
+		log.Fatal(a.Metrics.ListenAndServe())
+	}()
+
 	a.server = &http.Server{
 		Addr:         a.ServerAddr,
 		Handler:      a.getMux(),
@@ -92,6 +141,8 @@ func (a *AppContext) buildResponse(response http.ResponseWriter, request *http.R
 	}
 
 	handleXCacheHeader(response, cached)
+
+	a.Metrics.HTTPRequestsTotal.With(prometheus.Labels{moduleLabel: repo}).Inc()
 
 	vcsRepository := vcsData.(repository.Repository)
 
@@ -152,7 +203,10 @@ func main() {
 		log.Fatal("invalid flag")
 	}
 
+	registry := prometheus.NewRegistry()
+
 	appContext := &AppContext{
+		Metrics: NewMetrics(registry, registry),
 		VCSHandler: github.New(
 			githubClient.NewClient(nil).Repositories,
 			rate.NewLimiter(rate.Limit(*githubRequestRate), *githubBucketSize),
@@ -166,9 +220,7 @@ func main() {
 	}
 
 	go func() {
-		if err := appContext.ListenAndServe(); err != nil {
-			log.Fatal(err)
-		}
+		log.Fatal(appContext.ListenAndServe())
 	}()
 
 	appContext.GracefulShutdown()
