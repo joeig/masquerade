@@ -43,12 +43,13 @@ type Metrics struct {
 	HTTPRequestsTotal *prometheus.CounterVec
 	ModuleNotFound    prometheus.Counter
 
+	enabled    bool
 	registerer prometheus.Registerer
 	gatherer   prometheus.Gatherer
 	server     *http.Server
 }
 
-func NewMetrics(registerer prometheus.Registerer, gatherer prometheus.Gatherer) *Metrics {
+func NewMetrics(enabled bool, registerer prometheus.Registerer, gatherer prometheus.Gatherer) *Metrics {
 	metrics := &Metrics{
 		HTTPRequestsTotal: prometheus.V2.NewCounterVec(
 			prometheus.CounterVecOpts{
@@ -71,6 +72,7 @@ func NewMetrics(registerer prometheus.Registerer, gatherer prometheus.Gatherer) 
 				Name: "module_not_found_total",
 				Help: "Total number of module not found responses",
 			}),
+		enabled:    enabled,
 		registerer: registerer,
 		gatherer:   gatherer,
 	}
@@ -81,6 +83,10 @@ func NewMetrics(registerer prometheus.Registerer, gatherer prometheus.Gatherer) 
 }
 
 func (m *Metrics) ListenAndServe() error {
+	if !m.enabled {
+		return nil
+	}
+
 	mux := http.NewServeMux()
 	mux.Handle("/metrics", promhttp.HandlerFor(m.gatherer, promhttp.HandlerOpts{Registry: m.registerer}))
 
@@ -110,7 +116,9 @@ type AppContext struct {
 
 func (a *AppContext) ListenAndServe() error {
 	go func() {
-		log.Fatal(a.Metrics.ListenAndServe())
+		if err := a.Metrics.ListenAndServe(); err != nil {
+			log.Fatal(err)
+		}
 	}()
 
 	a.server = &http.Server{
@@ -214,6 +222,7 @@ func main() {
 	githubOwner := flag.String("githubOwner", "", "GitHub owner")
 	githubRequestRate := flag.Float64("githubRequestRate", 25, "Max. request rate to GitHub")
 	githubBucketSize := flag.Int("githubBucketSize", 100, "Max. request bucket size for GitHub")
+	enableMetrics := flag.Bool("enableMetrics", false, "Enable Prometheus metrics on \":9091/metrics\"")
 	flag.Parse()
 
 	if *serverAddr == "" || *packageHost == "" || *githubOwner == "" {
@@ -224,7 +233,7 @@ func main() {
 	registry := prometheus.NewRegistry()
 
 	appContext := &AppContext{
-		Metrics: NewMetrics(registry, registry),
+		Metrics: NewMetrics(*enableMetrics, registry, registry),
 		VCSHandler: github.New(
 			githubClient.NewClient(nil).Repositories,
 			rate.NewLimiter(rate.Limit(*githubRequestRate), *githubBucketSize),
