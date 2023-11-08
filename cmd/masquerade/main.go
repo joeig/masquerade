@@ -41,6 +41,7 @@ const moduleLabel = "module"
 
 type Metrics struct {
 	HTTPRequestsTotal *prometheus.CounterVec
+	ModuleNotFound    prometheus.Counter
 
 	registerer prometheus.Registerer
 	gatherer   prometheus.Gatherer
@@ -56,11 +57,16 @@ func NewMetrics(registerer prometheus.Registerer, gatherer prometheus.Gatherer) 
 			},
 			[]string{moduleLabel},
 		),
+		ModuleNotFound: prometheus.NewCounter(
+			prometheus.CounterOpts{
+				Name: "module_not_found_total",
+				Help: "Total number of module not found responses",
+			}),
 		registerer: registerer,
 		gatherer:   gatherer,
 	}
 
-	registerer.MustRegister(metrics.HTTPRequestsTotal)
+	registerer.MustRegister(metrics.HTTPRequestsTotal, metrics.ModuleNotFound)
 
 	return metrics
 }
@@ -145,11 +151,9 @@ func (a *AppContext) buildResponse(response http.ResponseWriter, request *http.R
 	}
 
 	handleXCacheHeader(response, cached)
-
 	a.Metrics.HTTPRequestsTotal.With(prometheus.Labels{moduleLabel: repo}).Inc()
 
 	vcsRepository := vcsData.(repository.Repository)
-
 	data := &goget.TemplateData{
 		ImportPrefix:   path.Join(a.PackageHost, repo),
 		VCS:            a.VCSHandler.Type(),
@@ -165,6 +169,7 @@ func (a *AppContext) handleRequest(response http.ResponseWriter, request *http.R
 		log.Print(err)
 
 		if errors.Is(err, repository.ErrNotFound) {
+			a.Metrics.ModuleNotFound.Inc()
 			http.Error(response, "module not found", http.StatusNotFound)
 			return
 		}
