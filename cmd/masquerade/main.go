@@ -50,12 +50,21 @@ type Metrics struct {
 
 func NewMetrics(registerer prometheus.Registerer, gatherer prometheus.Gatherer) *Metrics {
 	metrics := &Metrics{
-		HTTPRequestsTotal: prometheus.NewCounterVec(
-			prometheus.CounterOpts{
-				Name: "http_requests_total",
-				Help: "Total number of HTTP requests",
+		HTTPRequestsTotal: prometheus.V2.NewCounterVec(
+			prometheus.CounterVecOpts{
+				CounterOpts: prometheus.CounterOpts{
+					Name: "http_requests_total",
+					Help: "Total number of HTTP requests",
+				},
+				VariableLabels: prometheus.ConstrainedLabels{
+					prometheus.ConstrainedLabel{
+						Name: moduleLabel,
+						Constraint: func(s string) string {
+							return strings.ToLower(s)
+						},
+					},
+				},
 			},
-			[]string{moduleLabel},
 		),
 		ModuleNotFound: prometheus.NewCounter(
 			prometheus.CounterOpts{
