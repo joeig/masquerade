@@ -11,6 +11,8 @@ const bodyTemplate = `<head>
 <body>
 Redirecting you to the <a href="{{.ProjectWebsite}}">project website</a>...`
 
+var body = template.Must(template.New("body").Parse(bodyTemplate))
+
 type TemplateData struct {
 	ImportPrefix   string
 	VCS            string
@@ -25,11 +27,5 @@ func New() *ResponseBody {
 }
 
 func (r *ResponseBody) Build(writer io.Writer, data *TemplateData) error {
-	body, _ := template.New("body").Parse(bodyTemplate)
-
-	if err := body.Execute(writer, data); err != nil {
-		return err
-	}
-
-	return nil
+	return body.Execute(writer, data)
 }

@@ -18,9 +18,9 @@ func TestResponseBody_Build(t *testing.T) {
 <meta http-equiv="refresh" content="0;URL='project-website'">
 <body>
 Redirecting you to the <a href="project-website">project website</a>...`)
-	body := New()
+	response := New()
 
-	if err := body.Build(writer, data); err != nil {
+	if err := response.Build(writer, data); err != nil {
 		t.Error("unexpected error")
 	}
 
@@ -31,9 +31,9 @@ Redirecting you to the <a href="project-website">project website</a>...`)
 
 func TestResponseBody_Build_error(t *testing.T) {
 	writer := &bytes.Buffer{}
-	body := New()
+	response := New()
 
-	if err := body.Build(writer, nil); err == nil {
+	if err := response.Build(writer, nil); err == nil {
 		t.Error("no error")
 	}
 }

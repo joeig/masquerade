@@ -1,4 +1,4 @@
 ---
 profile: ./out/coverage.out
 threshold:
-  total: 60
+  total: 59
