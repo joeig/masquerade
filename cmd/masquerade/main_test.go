@@ -83,7 +83,7 @@ func Test_appContext_getMux(t *testing.T) {
 	response := httptest.NewRecorder()
 	request := httptest.NewRequest(http.MethodGet, "/foo", nil)
 	appContext := &AppContext{
-		Metrics:         NewMetrics(&mockRegistry{}, &mockRegistry{}),
+		Metrics:         NewMetrics(false, &mockRegistry{}, &mockRegistry{}),
 		VCSHandler:      &mockVCSHandler{},
 		ResponseBuilder: &mockResponseBuilder{buildBytes: []byte("<head>")},
 		Cache:           &mockMemoizer{memoizeResult: &mockRepository{}, memoizeCached: true},
@@ -135,7 +135,7 @@ func Test_appContext_buildResponse(t *testing.T) {
 		{
 			name: "user",
 			fields: fields{
-				Metrics:         NewMetrics(&mockRegistry{}, &mockRegistry{}),
+				Metrics:         NewMetrics(false, &mockRegistry{}, &mockRegistry{}),
 				VCSHandler:      &mockVCSHandler{},
 				ResponseBuilder: &mockResponseBuilder{buildBytes: []byte("<head>")},
 				Cache:           &mockMemoizer{memoizeResult: &mockRepository{}, memoizeCached: true},
@@ -151,7 +151,7 @@ func Test_appContext_buildResponse(t *testing.T) {
 		{
 			name: "go-get",
 			fields: fields{
-				Metrics:         NewMetrics(&mockRegistry{}, &mockRegistry{}),
+				Metrics:         NewMetrics(false, &mockRegistry{}, &mockRegistry{}),
 				VCSHandler:      &mockVCSHandler{},
 				ResponseBuilder: &mockResponseBuilder{buildBytes: []byte("<head>")},
 				Cache:           &mockMemoizer{memoizeResult: &mockRepository{}, memoizeCached: true},
@@ -167,7 +167,7 @@ func Test_appContext_buildResponse(t *testing.T) {
 		{
 			name: "memoizer-error",
 			fields: fields{
-				Metrics:    NewMetrics(&mockRegistry{}, &mockRegistry{}),
+				Metrics:    NewMetrics(false, &mockRegistry{}, &mockRegistry{}),
 				VCSHandler: &mockVCSHandler{},
 				Cache:      &mockMemoizer{memoizeErr: errors.New("error")},
 			},
@@ -181,7 +181,7 @@ func Test_appContext_buildResponse(t *testing.T) {
 		{
 			name: "response-builder-error",
 			fields: fields{
-				Metrics:         NewMetrics(&mockRegistry{}, &mockRegistry{}),
+				Metrics:         NewMetrics(false, &mockRegistry{}, &mockRegistry{}),
 				VCSHandler:      &mockVCSHandler{},
 				ResponseBuilder: &mockResponseBuilder{buildErr: errors.New("error")},
 				Cache:           &mockMemoizer{memoizeResult: &mockRepository{}},
@@ -246,7 +246,7 @@ func Test_appContext_handleRequest(t *testing.T) {
 		{
 			name: "ok",
 			fields: fields{
-				Metrics:         NewMetrics(&mockRegistry{}, &mockRegistry{}),
+				Metrics:         NewMetrics(false, &mockRegistry{}, &mockRegistry{}),
 				VCSHandler:      &mockVCSHandler{},
 				ResponseBuilder: &mockResponseBuilder{buildBytes: []byte("<head>")},
 				Cache:           &mockMemoizer{memoizeResult: &mockRepository{}, memoizeCached: true},
@@ -266,7 +266,7 @@ func Test_appContext_handleRequest(t *testing.T) {
 		{
 			name: "not-found-error",
 			fields: fields{
-				Metrics:         NewMetrics(&mockRegistry{}, &mockRegistry{}),
+				Metrics:         NewMetrics(false, &mockRegistry{}, &mockRegistry{}),
 				VCSHandler:      &mockVCSHandler{},
 				ResponseBuilder: &mockResponseBuilder{},
 				Cache:           &mockMemoizer{memoizeErr: repository.ErrNotFound, memoizeCached: true},
@@ -286,7 +286,7 @@ func Test_appContext_handleRequest(t *testing.T) {
 		{
 			name: "bad-request",
 			fields: fields{
-				Metrics:         NewMetrics(&mockRegistry{}, &mockRegistry{}),
+				Metrics:         NewMetrics(false, &mockRegistry{}, &mockRegistry{}),
 				VCSHandler:      &mockVCSHandler{},
 				ResponseBuilder: &mockResponseBuilder{},
 				Cache:           &mockMemoizer{memoizeErr: errors.New("error"), memoizeCached: true},
