@@ -111,7 +111,6 @@ func Test_appContext_getMux(t *testing.T) {
 }
 
 func Test_appContext_buildResponse(t *testing.T) {
-	homePageURL := "https://homepage.example.com"
 	type fields struct {
 		Metrics            *Metrics
 		VCSHandler         VCSHandler
@@ -120,7 +119,7 @@ func Test_appContext_buildResponse(t *testing.T) {
 		PackageHost        string
 		ListenAndServeAddr string
 		MaxAge             time.Duration
-		HomePageURL        *string
+		HomePageURL        string
 	}
 	type args struct {
 		response http.ResponseWriter
@@ -159,7 +158,7 @@ func Test_appContext_buildResponse(t *testing.T) {
 				VCSHandler:      &mockVCSHandler{},
 				ResponseBuilder: &mockResponseBuilder{buildBytes: []byte("<head>")},
 				Cache:           &mockMemoizer{memoizeResult: &mockRepository{}, memoizeCached: true},
-				HomePageURL:     &homePageURL,
+				HomePageURL:     "https://homepage.example.com",
 			},
 			args: args{
 				response: httptest.NewRecorder(),
