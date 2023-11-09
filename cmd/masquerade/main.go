@@ -110,6 +110,7 @@ type AppContext struct {
 	PackageHost     string
 	ServerAddr      string
 	MaxAge          time.Duration
+	HomePageURL     *string
 
 	server *http.Server
 }
@@ -159,6 +160,11 @@ func (a *AppContext) getMux() http.Handler {
 
 func (a *AppContext) buildResponse(response http.ResponseWriter, request *http.Request) error {
 	repo := strings.Split(request.URL.Path, "/")[1]
+
+	if repo == "" && a.HomePageURL != nil {
+		http.Redirect(response, request, *a.HomePageURL, http.StatusSeeOther)
+		return nil
+	}
 
 	vcsData, err, cached := a.Cache.Memoize(repo, func() (any, error) {
 		return a.VCSHandler.Fetch(request.Context(), repo)
@@ -219,6 +225,7 @@ func main() {
 	serverAddr := flag.String("serverAddr", ":8493", "HTTP listener address")
 	packageHost := flag.String("packageHost", "", "Package host")
 	ttl := flag.Duration("ttl", 1*time.Hour, "Cache TTL")
+	homePageURL := flag.String("homePageURL", "", "Home page URL (requesting \"/\") redirects to this URL")
 	githubOwner := flag.String("githubOwner", "", "GitHub owner")
 	githubRequestRate := flag.Float64("githubRequestRate", 25, "Max. request rate to GitHub")
 	githubBucketSize := flag.Int("githubBucketSize", 100, "Max. request bucket size for GitHub")
@@ -244,6 +251,7 @@ func main() {
 		PackageHost:     *packageHost,
 		ServerAddr:      *serverAddr,
 		MaxAge:          *ttl,
+		HomePageURL:     homePageURL,
 	}
 
 	go func() {

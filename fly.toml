@@ -8,7 +8,7 @@ buildpacks = ["gcr.io/paketo-buildpacks/go"]
 BP_GO_TARGETS = "./cmd/masquerade"
 
 [processes]
-app = "masquerade -packageHost \"go.eigsys.de\" -githubOwner \"joeig\" -enableMetrics true"
+app = "masquerade -packageHost \"go.eigsys.de\" -githubOwner \"joeig\" -enableMetrics true -homePageURL \"https://github.com/joeig/\""
 
 [http_service]
 internal_port = 8493

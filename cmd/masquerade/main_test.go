@@ -111,6 +111,7 @@ func Test_appContext_getMux(t *testing.T) {
 }
 
 func Test_appContext_buildResponse(t *testing.T) {
+	homePageURL := "https://homepage.example.com"
 	type fields struct {
 		Metrics            *Metrics
 		VCSHandler         VCSHandler
@@ -119,6 +120,7 @@ func Test_appContext_buildResponse(t *testing.T) {
 		PackageHost        string
 		ListenAndServeAddr string
 		MaxAge             time.Duration
+		HomePageURL        *string
 	}
 	type args struct {
 		response http.ResponseWriter
@@ -129,9 +131,45 @@ func Test_appContext_buildResponse(t *testing.T) {
 		fields      fields
 		args        args
 		wantErr     bool
+		wantCode    int
 		wantHeaders http.Header
 		wantBody    []byte
 	}{
+		{
+			name: "slash",
+			fields: fields{
+				Metrics:         NewMetrics(false, &mockRegistry{}, &mockRegistry{}),
+				VCSHandler:      &mockVCSHandler{},
+				ResponseBuilder: &mockResponseBuilder{},
+				Cache:           &mockMemoizer{memoizeErr: repository.ErrNotFound, memoizeCached: false},
+			},
+			args: args{
+				response: httptest.NewRecorder(),
+				request:  httptest.NewRequest(http.MethodGet, "/", nil),
+			},
+			wantErr:     true,
+			wantCode:    http.StatusOK,
+			wantBody:    []byte(""),
+			wantHeaders: http.Header{},
+		},
+		{
+			name: "slash-home-page",
+			fields: fields{
+				Metrics:         NewMetrics(false, &mockRegistry{}, &mockRegistry{}),
+				VCSHandler:      &mockVCSHandler{},
+				ResponseBuilder: &mockResponseBuilder{buildBytes: []byte("<head>")},
+				Cache:           &mockMemoizer{memoizeResult: &mockRepository{}, memoizeCached: true},
+				HomePageURL:     &homePageURL,
+			},
+			args: args{
+				response: httptest.NewRecorder(),
+				request:  httptest.NewRequest(http.MethodGet, "/", nil),
+			},
+			wantErr:     false,
+			wantCode:    http.StatusSeeOther,
+			wantBody:    []byte("<a href=\"https://homepage.example.com\">See Other</a>.\n\n"),
+			wantHeaders: http.Header{"Location": {"https://homepage.example.com"}, "Content-Type": {"text/html; charset=utf-8"}},
+		},
 		{
 			name: "user",
 			fields: fields{
@@ -145,6 +183,7 @@ func Test_appContext_buildResponse(t *testing.T) {
 				request:  httptest.NewRequest(http.MethodGet, "/foo", nil),
 			},
 			wantErr:     false,
+			wantCode:    http.StatusOK,
 			wantBody:    []byte("<head>"),
 			wantHeaders: http.Header{"X-Cache": {"Hit"}, "Content-Type": {"text/html; charset=utf-8"}},
 		},
@@ -161,6 +200,7 @@ func Test_appContext_buildResponse(t *testing.T) {
 				request:  httptest.NewRequest(http.MethodGet, "/foo?go-get=1", nil),
 			},
 			wantErr:     false,
+			wantCode:    http.StatusOK,
 			wantBody:    []byte("<head>"),
 			wantHeaders: http.Header{"X-Cache": {"Hit"}, "Content-Type": {"text/html; charset=utf-8"}},
 		},
@@ -176,6 +216,7 @@ func Test_appContext_buildResponse(t *testing.T) {
 				request:  httptest.NewRequest(http.MethodGet, "/foo", nil),
 			},
 			wantErr:     true,
+			wantCode:    http.StatusOK,
 			wantHeaders: http.Header{},
 		},
 		{
@@ -191,6 +232,7 @@ func Test_appContext_buildResponse(t *testing.T) {
 				request:  httptest.NewRequest(http.MethodGet, "/foo", nil),
 			},
 			wantErr:     true,
+			wantCode:    http.StatusOK,
 			wantHeaders: http.Header{"X-Cache": {"Miss"}, "Content-Type": {"text/plain; charset=utf-8"}}},
 	}
 	for _, tt := range tests {
@@ -203,12 +245,13 @@ func Test_appContext_buildResponse(t *testing.T) {
 				PackageHost:     tt.fields.PackageHost,
 				ServerAddr:      tt.fields.ListenAndServeAddr,
 				MaxAge:          tt.fields.MaxAge,
+				HomePageURL:     tt.fields.HomePageURL,
 			}
 			if err := appContext.buildResponse(tt.args.response, tt.args.request); (err != nil) != tt.wantErr {
 				t.Errorf("buildResponse() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			response := tt.args.response.(*httptest.ResponseRecorder)
-			if response.Code != 200 {
+			if response.Code != tt.wantCode {
 				t.Error("invalid code")
 			}
 			if !reflect.DeepEqual(tt.args.response.Header(), tt.wantHeaders) {
