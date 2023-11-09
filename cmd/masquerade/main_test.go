@@ -89,7 +89,7 @@ func Test_appContext_getMux(t *testing.T) {
 		Cache:           &mockMemoizer{memoizeResult: &mockRepository{}, memoizeCached: true},
 		MaxAge:          30 * time.Second,
 	}
-	wantCode := 200
+	wantCode := http.StatusOK
 	wantHeaders := http.Header{
 		"Cache-Control": {"public, max-age=30"},
 		"X-Cache":       {"Hit"},
@@ -377,7 +377,7 @@ func Test_appContext_handleHealth(t *testing.T) {
 	response := httptest.NewRecorder()
 	request := httptest.NewRequest(http.MethodGet, "/.internal/health", nil)
 	appContext := &AppContext{}
-	wantCode := 200
+	wantCode := http.StatusOK
 	wantBody := []byte("ok")
 
 	appContext.getMux().ServeHTTP(response, request)
