@@ -110,7 +110,7 @@ type AppContext struct {
 	PackageHost     string
 	ServerAddr      string
 	MaxAge          time.Duration
-	HomePageURL     *string
+	HomePageURL     string
 
 	server *http.Server
 }
@@ -161,8 +161,8 @@ func (a *AppContext) getMux() http.Handler {
 func (a *AppContext) buildResponse(response http.ResponseWriter, request *http.Request) error {
 	repo := strings.Split(request.URL.Path, "/")[1]
 
-	if repo == "" && a.HomePageURL != nil {
-		http.Redirect(response, request, *a.HomePageURL, http.StatusSeeOther)
+	if repo == "" && a.HomePageURL != "" {
+		http.Redirect(response, request, a.HomePageURL, http.StatusSeeOther)
 		return nil
 	}
 
@@ -251,7 +251,7 @@ func main() {
 		PackageHost:     *packageHost,
 		ServerAddr:      *serverAddr,
 		MaxAge:          *ttl,
-		HomePageURL:     homePageURL,
+		HomePageURL:     *homePageURL,
 	}
 
 	go func() {
