@@ -1,13 +1,9 @@
 ---
 name: Deploy
 on:
-  workflow_run:
-    workflows:
-      - Tests
+  push:
     branches:
       - main
-    types:
-      - completed
 jobs:
   fly:
     name: Deploy to Fly
