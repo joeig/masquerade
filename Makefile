@@ -17,6 +17,7 @@ build:
 	$(GOBUILD) -o ./out/$(BINARY_NAME) -v ./cmd/$(BINARY_NAME)
 
 build-linux-amd64:
+	mkdir -p ./out
 	GOOS=linux GOARCH=amd64 $(GOBUILD) -o ./out/$(BINARY_NAME)_linux_amd64 -v ./cmd/$(BINARY_NAME)
 
 coverage:
