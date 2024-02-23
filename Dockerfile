@@ -1,6 +1,5 @@
-FROM golang:1.22-alpine as build
+FROM golang:1.22 as build
 
-RUN update-ca-certificates
 RUN adduser \
     --disabled-password \
     --gecos "" \
