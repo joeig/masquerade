@@ -1,6 +1,5 @@
 FROM golang:1.22-alpine as build
 
-RUN apk add --no-cache git ca-certificates
 RUN update-ca-certificates
 RUN adduser \
     --disabled-password \
