@@ -39,7 +39,7 @@ jobs:
           tags: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.prep-build-id.outputs.BUILD_ID }}
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
-      - uses: actions/delete-package-versions@v4
+      - uses: actions/delete-package-versions@v5
         with:
           package-name: ${{ github.event.repository.name }}
           package-type: container
