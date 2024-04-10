@@ -1,6 +1,6 @@
 module go.eigsys.de/masquerade
 
-go 1.20
+go 1.22
 
 require (
 	github.com/google/go-github/v52 v52.0.0
