@@ -21,11 +21,11 @@ build-linux-amd64:
 	GOOS=linux GOARCH=amd64 $(GOBUILD) -o ./out/$(BINARY_NAME)_linux_amd64 -v ./cmd/$(BINARY_NAME)
 
 coverage:
-	$(GOCOVER) -func=./out/coverage.out
+	$(GOCOVER) -func=./coverage.out
 
 test:
 	mkdir -p ./out
-	$(GOTEST) -v ./... -coverprofile=./out/coverage.out
+	$(GOTEST) -v ./... -coverprofile=./coverage.out
 
 check-fmt:
 	$(GOFMT) -d ${GOFILES}
