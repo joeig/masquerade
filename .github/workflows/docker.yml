@@ -1,9 +1,10 @@
 ---
-name: Docker build
+name: docker-build
 on:
   push:
     branches:
       - main
+  workflow_dispatch:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
