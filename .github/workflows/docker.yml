@@ -22,7 +22,7 @@ jobs:
           sha=${GITHUB_SHA::8}
           ts=$(date +%s)
           echo "BUILD_ID=${branch}-${sha}-${ts}" >> "${GITHUB_OUTPUT}"
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: docker/setup-qemu-action@v3
         with:
           platforms: arm64
