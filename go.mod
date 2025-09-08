@@ -7,7 +7,7 @@ require (
 	github.com/kofalt/go-memoize v0.0.0-20220914132407-0b5d6a304579
 	github.com/prometheus/client_golang v1.23.0
 	github.com/prometheus/client_model v0.6.2
-	golang.org/x/time v0.12.0
+	golang.org/x/time v0.13.0
 )
 
 require (
