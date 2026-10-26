@@ -1,7 +1,5 @@
 # Masquerade 🎭
 
-[![Go Report Card](https://goreportcard.com/badge/go.eigsys.de/masquerade)](https://goreportcard.com/report/go.eigsys.de/masquerade)
-
 Masquerade helps you to host your Go modules behind your own domain.
 It verifies whether the desired module exists in your GitHub account and directs `go get` (and other tools) to the right repository URL.
 
